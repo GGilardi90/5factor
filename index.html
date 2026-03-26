@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>5-Factor Report</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --ink: #1a1a1a; --ink-mid: #444; --ink-light: #777; --ink-faint: #aaa;
+  --rule: #d1d5db; --bg: #fff; --bg-alt: #f9fafb; --bg-hover: #f3f4f6;
+  --accent: #1a3a6b; --accent-light: #e8eef7;
+  --pos: #1a6b3a; --neg: #8b1a1a;
+  --highlight: #fffbe6; --highlight-border: #d4b800;
+  --sb-w: 300px;
+}
+html, body { height: 100%; overflow: hidden; }
+body { font-family: 'IBM Plex Sans', sans-serif; background: #fff; color: var(--ink); font-size: 11px; display: flex; flex-direction: column; }
+
+/* TOP BAR */
+.topbar { background: #111827; color: #fff; padding: 8px 14px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; border-bottom: 2px solid var(--accent); flex-wrap: wrap; }
+.tb-logo { font-size: 11px; font-weight: 600; letter-spacing: .15em; color: #c8a800; text-transform: uppercase; white-space: nowrap; }
+.tb-sep { width: 1px; height: 20px; background: #374151; flex-shrink: 0; }
+.tb-label { font-size: 9px; color: #6b7280; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.run-btn { background: var(--accent); color: #fff; border: none; border-radius: 3px; padding: 5px 16px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: 'IBM Plex Sans', sans-serif; }
+.run-btn:hover { background: #2a4d80; }
+.run-btn:disabled { background: #374151; color: #6b7280; cursor: not-allowed; }
+.tb-status { font-size: 9px; color: #6b7280; font-family: 'IBM Plex Mono', monospace; }
+.tb-status.ok { color: #6ee7b7; } .tb-status.err { color: #f87171; }
+.tb-spacer { flex: 1; }
+.load-universe-btn { background: #1f2937; border: 1px solid #374151; border-radius: 3px; color: #9ca3af; padding: 4px 12px; font-size: 10px; cursor: pointer; white-space: nowrap; font-family: 'IBM Plex Sans', sans-serif; }
+.load-universe-btn:hover { border-color: var(--accent); color: #c8a800; }
+.load-universe-btn.loaded { color: #6ee7b7; border-color: #166534; }
+.sidebar-toggle { background: none; border: 1px solid #374151; border-radius: 3px; color: #9ca3af; padding: 4px 10px; font-size: 10px; cursor: pointer; white-space: nowrap; font-family: 'IBM Plex Sans', sans-serif; }
+
+/* TICKER AUTOCOMPLETE */
+.ticker-wrap { position: relative; display: inline-block; }
+.ticker-inp { background: #1f2937; border: 1px solid #374151; border-radius: 3px; color: #e5e7eb; font-size: 13px; font-family: 'IBM Plex Mono', monospace; padding: 4px 8px; outline: none; width: 100px; text-transform: uppercase; font-weight: 600; letter-spacing: .08em; }
+.ticker-inp:focus { border-color: #4f7cff; }
+.ac-dropdown { position: absolute; top: calc(100% + 4px); left: 0; min-width: 300px; background: #1f2937; border: 1px solid #4f7cff; border-radius: 4px; z-index: 9999; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.ac-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; cursor: pointer; border-bottom: 0.5px solid #374151; }
+.ac-item:last-child { border-bottom: none; }
+.ac-item:hover, .ac-item.ac-active { background: #374151; }
+.ac-ticker { font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: #e5e7eb; min-width: 60px; }
+.ac-name { font-size: 10px; color: #9ca3af; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.ac-cik { font-size: 9px; color: #4b5563; flex-shrink: 0; }
+
+/* PROGRESS */
+.progress-line { height: 2px; background: #1f2937; flex-shrink: 0; }
+.progress-line-fill { height: 100%; background: var(--accent); width: 0%; transition: width .4s ease; }
+
+/* LAYOUT */
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+/* SIDEBAR */
+.sidebar { width: var(--sb-w); flex-shrink: 0; border-right: 1px solid var(--rule); display: flex; flex-direction: column; overflow: hidden; transition: width .2s ease, opacity .2s ease; background: #fff; }
+.sidebar.collapsed { width: 0; opacity: 0; pointer-events: none; }
+.sb-filters { padding: 8px; border-bottom: 1px solid var(--rule); background: var(--bg-alt); display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.sb-filters input[type=text] { width: 100%; border: 1px solid var(--rule); border-radius: 3px; padding: 5px 8px; font-size: 11px; outline: none; font-family: 'IBM Plex Sans', sans-serif; }
+.sb-filters input[type=text]:focus { border-color: var(--accent); }
+.sb-row { display: flex; gap: 6px; }
+.sb-row select { flex: 1; border: 1px solid var(--rule); border-radius: 3px; padding: 4px 6px; font-size: 10px; outline: none; background: #fff; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; }
+.sb-meta { display: flex; justify-content: space-between; align-items: center; }
+.sb-count { font-size: 9px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; }
+.sb-sort { font-size: 9px; color: var(--accent); cursor: pointer; border: none; background: none; font-family: 'IBM Plex Sans', sans-serif; }
+.sb-prog { display: flex; align-items: center; gap: 6px; }
+.sb-prog-bar { flex: 1; height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; }
+.sb-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .3s; }
+.sb-prog-text { font-size: 9px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
+.tab-bar { display: flex; border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+.tab-btn { flex: 1; padding: 4px; font-size: 10px; border: none; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; transition: background .15s; }
+.tab-btn.active { background: var(--accent); color: #fff; }
+.tab-btn:not(.active) { background: var(--bg-alt); color: var(--ink-light); }
+.company-list { flex: 1; overflow-y: auto; }
+.company-list::-webkit-scrollbar { width: 3px; }
+.company-list::-webkit-scrollbar-thumb { background: var(--rule); }
+.ci { padding: 7px 10px; border-bottom: 0.5px solid #f0f0f0; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 2px; }
+.ci:hover { background: var(--bg-hover); }
+.ci.active { background: var(--accent-light); border-left: 2px solid var(--accent); padding-left: 8px; }
+.ci.active .ci-tk { color: var(--accent); }
+.ci-top { display: flex; align-items: baseline; gap: 5px; }
+.ci-tk { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; }
+.ci-nm { font-size: 9px; color: var(--ink-mid); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+.ci-sub { font-size: 8px; color: var(--ink-faint); }
+
+/* LABEL PILLS */
+.lp { display: inline-block; font-size: 8px; font-weight: 600; padding: 1px 5px; border-radius: 8px; white-space: nowrap; cursor: pointer; }
+.lp-none        { background: var(--bg-alt); color: var(--ink-faint); border: 1px dashed var(--rule); }
+.lp-interesting { background: #fef9c3; color: #854d0e; }
+.lp-watchlist   { background: #dbeafe; color: #1d4ed8; }
+.lp-reviewed    { background: #dcfce7; color: #166534; }
+.lp-toohard     { background: #ede9fe; color: #7c3aed; }
+.lp-pass        { background: #f3f4f6; color: #6b7280; }
+.lp-opt { transition: opacity .1s; }
+.lp-opt:hover { opacity: .75; }
+.lp-opt.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* REPORT PANEL */
+.report-panel { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.report-panel::-webkit-scrollbar { width: 5px; }
+.report-panel::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+
+/* LABEL BAND */
+.label-band { background: var(--bg-alt); border-bottom: 1px solid var(--rule); padding: 6px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+.label-band-title { font-size: 9px; font-weight: 600; color: var(--ink-light); letter-spacing: .1em; text-transform: uppercase; }
+.label-band textarea { flex: 1; min-width: 200px; border: 1px solid var(--rule); border-radius: 3px; padding: 4px 8px; font-size: 10px; font-family: 'IBM Plex Sans', sans-serif; resize: none; height: 32px; outline: none; background: #fff; line-height: 1.4; }
+.label-band textarea:focus { border-color: var(--accent); }
+.label-band-nav { display: flex; gap: 5px; margin-left: auto; }
+.nav-btn { background: none; border: 1px solid var(--rule); border-radius: 3px; padding: 3px 8px; font-size: 10px; cursor: pointer; color: var(--ink-mid); font-family: 'IBM Plex Sans', sans-serif; }
+.nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+/* REPORT HEADER */
+.report-header { background: #111827; color: #fff; padding: 10px 14px 8px; display: grid; grid-template-columns: 1fr auto auto auto auto; align-items: center; gap: 20px; flex-shrink: 0; }
+.header-company .name { font-size: 17px; font-weight: 600; letter-spacing: .03em; }
+.header-company .exchange { font-size: 10px; color: #aab; letter-spacing: .12em; margin-top: 1px; }
+.header-stat { text-align: center; }
+.header-stat .hs-label { font-size: 9px; color: #889; letter-spacing: .1em; text-transform: uppercase; }
+.header-stat .hs-val { font-size: 15px; font-weight: 500; color: #fff; font-family: 'IBM Plex Mono', monospace; }
+.header-stat .hs-sub { font-size: 9px; color: #778; margin-top: 1px; }
+.vl-badge { background: #c8a800; color: #1a1200; font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; padding: 4px 8px; border-radius: 2px; text-align: center; }
+
+/* DATA TABLES */
+.report-page { background: #faf9f6; border: 1px solid #888; margin: 16px; box-shadow: 1px 1px 8px rgba(0,0,0,.1); }
+.body-grid { display: grid; grid-template-columns: 1fr 220px; border-bottom: 1px solid #c8c8c8; }
+.left-panel { border-right: 1px solid #c8c8c8; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 10px; font-family: 'IBM Plex Mono', monospace; }
+.data-table .row-label { font-size: 9px; font-family: 'IBM Plex Sans', sans-serif; color: #444; padding: 2px 8px 2px 10px; white-space: nowrap; border-right: 1px solid #c8c8c8; width: 148px; }
+.data-table td { text-align: right; padding: 2px 5px; border-right: 0.5px solid #c8c8c8; color: var(--ink); white-space: nowrap; }
+.data-table td:last-child { border-right: none; }
+.data-table tr { border-bottom: 0.5px solid #e8e5de; }
+.data-table tr.section-head td, .data-table tr.section-head .row-label { background: var(--accent); color: #fff; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; padding: 3px 8px 3px 10px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 500; border-color: #2a4d80; }
+.data-table tr.highlight-row td, .data-table tr.highlight-row .row-label { background: var(--highlight); border-bottom: 0.5px solid var(--highlight-border); border-top: 0.5px solid var(--highlight-border); font-weight: 500; }
+.data-table .yr-head { background: #111827; color: #ccc; font-size: 9px; font-weight: 500; text-align: center; padding: 3px 5px; border-right: 0.5px solid #333; }
+.sep-row td, .sep-row .row-label { height: 4px; background: #f0ede6; border: none; padding: 0; }
+.pos-val { color: var(--pos); } .neg-val { color: var(--neg); }
+
+/* 5-FACTOR */
+.five-factor-section { border-top: 2px solid var(--accent); background: #fff; }
+.ff-header { background: var(--accent); color: #fff; font-size: 9px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; padding: 4px 10px; }
+.ff-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.ff-table th { font-family: 'IBM Plex Sans', sans-serif; font-size: 8px; font-weight: 500; color: #777; letter-spacing: .08em; text-transform: uppercase; text-align: right; padding: 3px 6px; border-bottom: 1px solid #c8c8c8; background: #f0ede6; white-space: nowrap; }
+.ff-table th.left { text-align: left; padding-left: 10px; }
+.ff-table td { text-align: right; padding: 3px 6px; font-family: 'IBM Plex Mono', monospace; border-bottom: 0.5px solid #e8e5de; white-space: nowrap; }
+.ff-table td.left { text-align: left; padding-left: 10px; font-family: 'IBM Plex Sans', sans-serif; color: #444; font-size: 9px; }
+.ff-table tr.formula-row td { background: #f0ede6; font-weight: 500; border-top: 1px solid #c8c8c8; border-bottom: 1px solid #c8c8c8; }
+.ff-table tr.total-row td { background: var(--highlight); font-weight: 600; border-top: 1px solid var(--highlight-border); font-size: 11px; }
+.badge { display: inline-block; font-size: 8px; padding: 1px 4px; border-radius: 2px; font-weight: 600; vertical-align: middle; margin-left: 3px; }
+.badge-mul { background: #dce8ff; color: #1a3a6b; } .badge-add { background: #e8f5e9; color: #1a6b3a; }
+
+/* CASH DEPLOYMENT */
+.cash-section { border-top: 2px solid var(--accent); background: #fff; }
+.cash-header { background: var(--accent); color: #fff; font-size: 9px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; padding: 4px 10px; }
+.cash-grid { display: grid; grid-template-columns: 148px repeat(6,1fr); }
+.cash-col-head { font-size: 8px; font-weight: 500; color: #777; letter-spacing: .05em; text-align: right; padding: 4px 6px; border-bottom: 1px solid #c8c8c8; background: #f0ede6; white-space: nowrap; }
+.cash-col-head.left { text-align: left; padding-left: 10px; }
+.cash-row { display: contents; }
+.cash-row > div { font-size: 10px; font-family: 'IBM Plex Mono', monospace; text-align: right; padding: 3px 6px; border-bottom: 0.5px solid #e8e5de; white-space: nowrap; }
+.cash-row > div.lbl { text-align: left; font-family: 'IBM Plex Sans', sans-serif; font-size: 9px; color: #444; padding-left: 10px; display: flex; align-items: center; gap: 5px; }
+.cash-row.ocf-row > div { background: #f0ede6; font-weight: 500; border-bottom: 1px solid #c8c8c8; }
+.cash-row.total-row > div { background: var(--highlight); font-weight: 600; border-top: 1px solid var(--highlight-border); border-bottom: 1px solid var(--highlight-border); }
+.cash-row.sub-row > div { background: #fafafa; }
+.cash-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cash-note { font-size: 8px; color: #aaa; padding: 4px 10px 5px; font-style: italic; border-top: 0.5px solid #c8c8c8; }
+
+/* RIGHT PANEL */
+.right-panel { padding: 0; display: flex; flex-direction: column; }
+.right-block { border-bottom: 1px solid #c8c8c8; padding: 8px 10px; }
+.right-block:last-child { border-bottom: none; flex: 1; }
+.rb-title { font-size: 8px; font-weight: 600; color: #777; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 0.5px solid #c8c8c8; }
+.rates-table { width: 100%; border-collapse: collapse; }
+.rates-table td { font-size: 9px; padding: 2px 0; }
+.rates-table td:first-child { color: #444; }
+.rates-table td:not(:first-child) { text-align: right; font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+.roe-table { width: 100%; border-collapse: collapse; }
+.roe-table td { font-size: 9px; padding: 2px 0; }
+.roe-table td:not(:first-child) { text-align: right; font-family: 'IBM Plex Mono', monospace; }
+.roe-table th { font-size: 8px; color: #aaa; padding: 1px 0; text-align: right; font-weight: 400; }
+.roe-table th:first-child { text-align: left; }
+.roe-table tr.avg-row td { font-weight: 600; border-top: 0.5px solid #c8c8c8; padding-top: 3px; }
+.implied-block { background: var(--highlight); border: 1px solid var(--highlight-border); border-radius: 2px; padding: 7px 8px; }
+.ib-title { font-size: 8px; font-weight: 600; color: #7a6000; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 5px; }
+.ib-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.ib-row .lbl { font-size: 9px; color: #444; }
+.ib-row .val { font-family: 'IBM Plex Mono', monospace; font-size: 9px; font-weight: 500; }
+.ib-result { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--highlight-border); display: flex; justify-content: space-between; align-items: baseline; }
+.ib-result .lbl { font-size: 9px; font-weight: 500; }
+.ib-result .val { font-size: 15px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+.input-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.input-row label { font-size: 9px; color: #444; }
+.input-row .inp-wrap { display: flex; align-items: center; gap: 3px; }
+.input-row input[type=number] { width: 56px; font-size: 10px; font-family: 'IBM Plex Mono', monospace; font-weight: 500; padding: 2px 5px; border: 0.5px solid #888; border-radius: 2px; background: #fff; color: var(--ink); text-align: right; outline: none; }
+.input-row input[type=number]:focus { border-color: var(--accent); }
+.input-row .unit { font-size: 8px; color: #aaa; }
+.reset-link { font-size: 8px; color: #aaa; cursor: pointer; text-decoration: underline; text-underline-offset: 1px; }
+.reset-link:hover { color: var(--accent); }
+
+/* COMMENTARY */
+.commentary { border-top: 2px solid var(--ink); padding: 10px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: #faf9f6; }
+.commentary .analyst-sig { font-size: 9px; color: #aaa; margin-top: 5px; font-style: italic; }
+.commentary .col-title { font-size: 8px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 5px; padding-bottom: 4px; border-bottom: 0.5px solid #c8c8c8; }
+.commentary .col-title.outlook { color: var(--accent); }
+.commentary .col-title.risk { color: var(--neg); }
+.analysis-textarea { width: 100%; height: 120px; border: 1px solid #d1d5db; border-radius: 4px; padding: 8px 10px; font-size: 10px; font-family: 'IBM Plex Sans', sans-serif; line-height: 1.6; color: #444; background: #fff; resize: vertical; outline: none; }
+.analysis-textarea:focus { border-color: var(--accent); }
+.analysis-textarea::placeholder { color: #bbb; font-style: italic; }
+
+.report-footer { background: #f0ede6; border-top: 1px solid #c8c8c8; padding: 5px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 8px; color: #aaa; }
+.report-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #aaa; padding: 60px 20px; text-align: center; }
+.report-empty .re-title { font-size: 15px; color: #777; }
+.report-empty .re-sub { font-size: 12px; line-height: 1.7; max-width: 360px; }
+.dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: blink 1.2s ease-in-out infinite; margin: 0 2px; }
+.dot:nth-child(2){ animation-delay:.2s; } .dot:nth-child(3){ animation-delay:.4s; }
+@keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+.edgar-badge { font-size: 8px; background: #1e3a5f; color: #93c5fd; padding: 2px 7px; border-radius: 3px; font-weight: 500; letter-spacing: .06em; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="tb-logo">5-Factor</div>
+  <span class="edgar-badge">SEC EDGAR</span>
+  <div class="tb-sep"></div>
+  <div class="tb-label">Ticker / Name</div>
+  <div class="ticker-wrap">
+    <input class="ticker-inp" id="inp-ticker" type="text" placeholder="AAPL" maxlength="20" autocomplete="off" />
+    <div class="ac-dropdown" id="ac-dropdown" style="display:none"></div>
+  </div>
+  <button class="run-btn" id="run-btn" onclick="runReport()">Generate Report</button>
+  <span class="tb-status" id="tb-status"></span>
+  <div class="tb-spacer"></div>
+  <button class="load-universe-btn" id="load-univ-btn" onclick="loadUniverse()">☰ Load Universe</button>
+  <button class="sidebar-toggle" id="sb-toggle" onclick="toggleSidebar()" style="display:none">◀ Queue</button>
+</div>
+<div class="progress-line"><div class="progress-line-fill" id="prog-fill"></div></div>
+
+<!-- APP BODY -->
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar collapsed" id="sidebar">
+    <div class="sb-filters">
+      <input type="text" id="sb-search" placeholder="Search ticker or name…" oninput="applyFilters()" />
+      <div class="sb-row">
+        <select id="sb-sic" onchange="applyFilters()"><option value="">All industries</option></select>
+        <select id="sb-label-filter" onchange="applyFilters()">
+          <option value="">All labels</option>
+          <option value="_unlabeled">Unlabeled</option>
+          <option value="interesting">Interesting</option>
+          <option value="watchlist">Watchlist</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="toohard">Too hard</option>
+          <option value="pass">Pass</option>
+        </select>
+      </div>
+      <div class="sb-meta">
+        <span class="sb-count" id="sb-count">—</span>
+        <button class="sb-sort" id="sb-sort-btn" onclick="cycleSort()">A→Z</button>
+      </div>
+      <div class="sb-prog">
+        <div class="sb-prog-bar"><div class="sb-prog-fill" id="sb-prog-fill" style="width:0%"></div></div>
+        <span class="sb-prog-text" id="sb-prog-text">0 labeled</span>
+      </div>
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-queue" onclick="switchTab('queue')">Queue</button>
+        <button class="tab-btn" id="tab-history" onclick="switchTab('history')">History</button>
+      </div>
+    </div>
+    <div class="company-list" id="company-list"></div>
+    <div class="company-list" id="history-list" style="display:none">
+      <div style="color:#aaa;font-size:10px;padding:8px 10px;font-style:italic">No history yet.</div>
+    </div>
+  </div>
+
+  <!-- REPORT PANEL -->
+  <div class="report-panel" id="report-panel">
+
+    <div class="label-band" id="label-band" style="display:none">
+      <span class="label-band-title">Label:</span>
+      <div id="label-picker" style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;"></div>
+      <textarea id="notes-area" placeholder="Notes…" oninput="saveNote()"></textarea>
+      <div class="label-band-nav">
+        <button class="nav-btn" id="btn-prev" onclick="navigateTo(-1)">← Prev</button>
+        <button class="nav-btn" id="btn-next" onclick="navigateTo(1)">Next →</button>
+      </div>
+    </div>
+
+    <div class="report-empty" id="report-empty">
+      <div style="font-size:36px;opacity:.2">📊</div>
+      <div class="re-title">No report generated yet</div>
+      <div class="re-sub">Type a ticker or company name above and click Generate Report.<br><br>Data sourced from SEC EDGAR — free, no API key required, US-listed companies only.</div>
+    </div>
+
+    <div id="report-content" style="display:none">
+      <div class="report-header">
+        <div class="header-company">
+          <div class="name" id="hdr-name">—</div>
+          <div class="exchange" id="hdr-exchange">&nbsp;</div>
+        </div>
+        <div class="header-stat"><div class="hs-label">Recent Price</div><div class="hs-val" id="hdr-price">—</div><div class="hs-sub">Yahoo Finance</div></div>
+        <div class="header-stat"><div class="hs-label">P/E Ratio</div><div class="hs-val" id="hdr-pe">—</div><div class="hs-sub">trailing</div></div>
+        <div class="header-stat"><div class="hs-label">Market Cap</div><div class="hs-val" id="hdr-mktcap">—</div><div class="hs-sub">&nbsp;</div></div>
+        <div class="header-stat"><div class="hs-label">Fiscal Year</div><div class="hs-val" id="hdr-fy">—</div><div class="hs-sub">end</div></div>
+        <div class="vl-badge">5-Factor<br>Report</div>
+      </div>
+
+      <div class="report-page">
+        <div class="body-grid">
+          <div class="left-panel">
+            <table class="data-table">
+              <thead><tr id="yr-header-row"><td class="row-label" style="background:#111827;color:#666;font-size:8px;letter-spacing:.08em;">FISCAL YEAR</td></tr></thead>
+              <tbody id="main-tbody"></tbody>
+            </table>
+            <div class="five-factor-section">
+              <div class="ff-header" id="ff-header-label">5-Factor Return Decomposition</div>
+              <table class="ff-table">
+                <thead><tr><th class="left">Factor</th><th>Value start</th><th>Value end</th><th>Cumulative</th><th>Annualized</th><th>Multiplier</th></tr></thead>
+                <tbody id="ff-tbody"></tbody>
+              </table>
+            </div>
+            <div class="five-factor-section" style="border-top:1px solid #c8c8c8">
+              <div class="ff-header">DuPont ROE Decomposition — ROE = Net Margin × Asset Turnover × Equity Multiplier</div>
+              <table class="ff-table">
+                <thead><tr><th class="left">Component</th><th id="dp-y1">—</th><th id="dp-y2">—</th><th id="dp-y3">—</th><th id="dp-y4">—</th><th id="dp-y5">—</th><th>5yr Avg</th></tr></thead>
+                <tbody id="dp-tbody"></tbody>
+              </table>
+            </div>
+            <div class="cash-section">
+              <div class="cash-header">Operating Cash Flow Deployment ($B)</div>
+              <div class="cash-grid" id="cash-grid">
+                <div class="cash-col-head left">Use of cash</div>
+                <div class="cash-col-head" id="csh-y1">—</div><div class="cash-col-head" id="csh-y2">—</div>
+                <div class="cash-col-head" id="csh-y3">—</div><div class="cash-col-head" id="csh-y4">—</div>
+                <div class="cash-col-head" id="csh-y5">—</div><div class="cash-col-head">5yr Avg</div>
+                <div id="cash-rows" style="display:contents"></div>
+              </div>
+              <div class="cash-note" id="cash-note">† D&amp;A shown as reference for capital intensity. Source: SEC EDGAR 10-K filings.</div>
+            </div>
+          </div>
+          <div class="right-panel">
+            <div class="right-block">
+              <div class="rb-title">Annual Growth Rates (CAGR)</div>
+              <table class="rates-table">
+                <tr><td></td><td style="text-align:right;font-size:8px;color:#aaa">10yr</td><td style="text-align:right;font-size:8px;color:#aaa">5yr</td></tr>
+                <tr><td>Revenue</td><td id="cagr-rev-10">—</td><td id="cagr-rev-5">—</td></tr>
+                <tr><td>EPS</td><td id="cagr-eps-10">—</td><td id="cagr-eps-5">—</td></tr>
+                <tr><td>Dividends</td><td id="cagr-div-10">—</td><td id="cagr-div-5">—</td></tr>
+                <tr><td>Book value/sh</td><td id="cagr-bv-10">—</td><td id="cagr-bv-5">—</td></tr>
+                <tr><td>Share count</td><td id="cagr-sh-10">—</td><td id="cagr-sh-5">—</td></tr>
+              </table>
+            </div>
+            <div class="right-block">
+              <div class="rb-title">ROE &amp; ROIC — Last 5 Years</div>
+              <table class="roe-table">
+                <thead><tr><th>Year</th><th>ROE</th><th>ROIC</th></tr></thead>
+                <tbody id="roe-tbody"></tbody>
+              </table>
+            </div>
+            <div class="right-block">
+              <div class="rb-title">Implied Market Growth Rate</div>
+              <div style="margin-bottom:8px">
+                <div class="input-row"><label>ROE used</label><div class="inp-wrap"><input type="number" id="inp-roe" value="0" step="0.1" min="0"><span class="unit">%</span></div></div>
+                <div style="text-align:right;margin-bottom:4px"><span class="reset-link" onclick="resetROE()">↺ reset avg</span></div>
+                <div class="input-row"><label>Cost of equity (r)</label><div class="inp-wrap"><input type="number" id="inp-r" value="9.0" step="0.1" min="1" max="30"><span class="unit">%</span></div></div>
+                <div style="text-align:right;margin-bottom:4px"><span class="reset-link" onclick="resetVal('inp-r',9.0)">↺ reset CAPM</span></div>
+                <div class="input-row"><label>Price (P)</label><div class="inp-wrap"><input type="number" id="inp-p" value="0" step="0.1" min="0.1"><span class="unit">$</span></div></div>
+                <div class="input-row" style="margin-top:2px"><label>Book value / sh (BV)</label><div class="inp-wrap"><input type="number" id="inp-bv" value="0" step="0.01" min="0.01"><span class="unit">$</span></div></div>
+              </div>
+              <div class="implied-block">
+                <div class="ib-title">P = ROE·(1+g)/(r−g)·BV → g</div>
+                <div class="ib-row"><span class="lbl">P / BV</span><span class="val" id="disp-pbv">—</span></div>
+                <div class="ib-row"><span class="lbl">ROE used</span><span class="val" id="disp-roe-used">—</span></div>
+                <div class="ib-row"><span class="lbl">Cost of equity r</span><span class="val" id="disp-r-used">—</span></div>
+                <div class="ib-result"><span class="lbl">Implied g</span><span class="val" id="disp-g" style="color:var(--pos)">—</span></div>
+                <div style="margin-top:5px;font-size:8px;color:#7a6000" id="disp-verdict"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="commentary">
+        <div>
+          <div class="col-title outlook">10-Year Outlook</div>
+          <textarea id="commentary-outlook" class="analysis-textarea" placeholder="Write your 10-year outlook here…"></textarea>
+        </div>
+        <div>
+          <div class="col-title risk">What Could Go Wrong</div>
+          <textarea id="commentary-risk" class="analysis-textarea" placeholder="Key risks — valuation, competition, regulation…"></textarea>
+          <div class="analyst-sig" id="commentary-sig"></div>
+        </div>
+      </div>
+      <div class="report-footer">
+        <span>5-Factor Report · SEC EDGAR · Not investment advice</span>
+        <span id="footer-ticker">Model: (1+RevΔ) × 1/(1+ShareΔ) × (1+MarginΔ) × (1+ValΔ) + DivYield</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let ALL = [], FILTERED = [], CUR_IDX = -1, SORT = 'az';
+let G = { revCagr10: 0, avgROE5: 0, ticker: '', cik: '' };
+const LABELS = {
+  interesting:{ text:'Interesting', cls:'lp-interesting' },
+  watchlist:  { text:'Watchlist',   cls:'lp-watchlist'   },
+  reviewed:   { text:'Reviewed',    cls:'lp-reviewed'    },
+  toohard:    { text:'Too hard',    cls:'lp-toohard'     },
+  pass:       { text:'Pass',        cls:'lp-pass'        },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════════════════════════════════════
+window.labelsMap       = JSON.parse(localStorage.getItem('vl5_labels')   || '{}');
+window.notesMap        = JSON.parse(localStorage.getItem('vl5_notes')    || '{}');
+window._analysisNotes  = JSON.parse(localStorage.getItem('vl5_analysis') || '{}');
+window._history        = JSON.parse(localStorage.getItem('vl5_history')  || '[]');
+let labelsMap = window.labelsMap;
+let notesMap  = window.notesMap;
+window.saveLabels = () => localStorage.setItem('vl5_labels',   JSON.stringify(labelsMap));
+window.saveNotes  = () => localStorage.setItem('vl5_notes',    JSON.stringify(notesMap));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const setStatus = (msg,type='') => { const el=$('tb-status'); el.textContent=msg; el.className='tb-status '+(type||''); };
+const progress  = p => { $('prog-fill').style.width=p+'%'; if(p>=100) setTimeout(()=>{ $('prog-fill').style.width='0%'; },600); };
+const fB  = (v,d=1) => v==null||isNaN(v)?'—':(v/1e9).toFixed(d);
+const fBa = (v,d=1) => v==null||isNaN(v)?'—':(Math.abs(v)/1e9).toFixed(d);
+const fP  = (v,d=1) => v==null||isNaN(v)?'—':v.toFixed(d)+'%';
+const fX  = (v,d=1) => v==null||isNaN(v)?'—':v.toFixed(d)+'×';
+const fM  = v => v==null||isNaN(v)?'—':'$'+(v>=1e12?(v/1e12).toFixed(1)+'T':v>=1e9?(v/1e9).toFixed(1)+'B':v>=1e6?(v/1e6).toFixed(0)+'M':v.toFixed(0));
+const pct = (v,d=1) => { if(v==null||isNaN(v)) return '—'; return (v>=0?'+':'')+v.toFixed(d)+'%'; };
+const cc  = v => !v||isNaN(v)?'':v>0?'pos-val':v<0?'neg-val':'';
+const avg = arr => { const v=arr.filter(x=>x!=null&&!isNaN(x)); return v.length?v.reduce((a,b)=>a+b,0)/v.length:null; };
+const cagr= (e,s,n) => e&&s&&s!==0&&n>0?(Math.pow(Math.abs(e/s),1/n)-1)*(e/s>0?1:-1)*100:null;
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const padCIK = cik => String(cik).padStart(10,'0');
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROXY + EDGAR API LAYER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Ticker list lives in our own GitHub repo — no proxy needed
+async function fetchTickerList() {
+  const r = await fetch('https://ggilardi90.github.io/5factor/company_tickers.json');
+  if (!r.ok) throw new Error('Could not load ticker list — make sure company_tickers.json is in your GitHub repo.');
+  return r.json();
+}
+
+// Personal Cloudflare Worker — handles all external fetches without CORS issues
+const CF = url => `https://edgar-proxy.subscriptionsgilardi.workers.dev/?url=${encodeURIComponent(url)}`;
+
+async function proxied(url) {
+  const r = await fetch(CF(url), { signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`Could not load ${url.split('/').pop()} (${r.status})`);
+  return r.json();
+}
+
+async function edgarSubmissions(cik) {
+  return proxied(`https://data.sec.gov/submissions/CIK${padCIK(cik)}.json`);
+}
+
+// Fetch all needed concepts in small parallel batches (~50KB each vs 15MB bulk)
+async function edgarFacts(cik) {
+  const concepts = [
+    ['Revenues','USD'],
+    ['RevenueFromContractWithCustomerExcludingAssessedTax','USD'],
+    ['SalesRevenueNet','USD'],
+    ['NetIncomeLoss','USD'],
+    ['EarningsPerShareDiluted','USD/shares'],
+    ['EarningsPerShareBasic','USD/shares'],
+    ['CommonStockDividendsPerShareDeclared','USD/shares'],
+    ['CommonStockDividendsPerShareCashPaid','USD/shares'],
+    ['Assets','USD'],
+    ['StockholdersEquity','USD'],
+    ['StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest','USD'],
+    ['CommonStockSharesOutstanding','shares'],
+    ['NetCashProvidedByUsedInOperatingActivities','USD'],
+    ['PaymentsToAcquirePropertyPlantAndEquipment','USD'],
+    ['DepreciationDepletionAndAmortization','USD'],
+    ['PaymentsToAcquireBusinessesNetOfCashAcquired','USD'],
+    ['PaymentsForRepurchaseOfCommonStock','USD'],
+    ['PaymentsOfDividends','USD'],
+    ['RepaymentsOfLongTermDebt','USD'],
+    ['ProceedsFromIssuanceOfLongTermDebt','USD'],
+  ];
+
+  const merged = { facts: { 'us-gaap': {} } };
+  const BATCH = 5;
+  for (let i = 0; i < concepts.length; i += BATCH) {
+    const batch = concepts.slice(i, i + BATCH);
+    const results = await Promise.allSettled(
+      batch.map(([concept]) =>
+        proxied(`https://data.sec.gov/api/xbrl/companyconcept/CIK${padCIK(cik)}/us-gaap/${concept}.json`)
+          .then(data => ({ concept, data }))
+          .catch(() => null)
+      )
+    );
+    results.forEach(r => {
+      if (r.status === 'fulfilled' && r.value?.data?.units) {
+        merged.facts['us-gaap'][r.value.concept] = { units: r.value.data.units };
+      }
+    });
+    if (i + BATCH < concepts.length) await new Promise(res => setTimeout(res, 200));
+  }
+  return merged;
+}
+
+async function edgarFacts_unused(cik) {
+  return proxied(`https://data.sec.gov/api/xbrl/companyfacts/CIK${padCIK(cik)}.json`);
+}
+
+// Extract annual 10-K values for a given GAAP concept
+// Returns [{year, value}] sorted ascending
+function extractAnnual(facts, concept, unit='USD') {
+  const gaap = facts.facts?.['us-gaap'];
+  if (!gaap) return [];
+  const candidates = Array.isArray(concept) ? concept : [concept];
+  for (const c of candidates) {
+    const data = gaap[c];
+    if (!data) continue;
+    const units = data.units?.[unit];
+    if (!units) continue;
+    // Accept any 10-K filing that spans a full year
+    // Be permissive on fp — some companies don't set it, others use FY/CY/Q4
+    const annual = units
+      .filter(d => d.form === '10-K')
+      .filter(d => {
+        if (!d.start || !d.end) return false;
+        const days = (new Date(d.end) - new Date(d.start)) / 86400000;
+        return days >= 300 && days <= 410; // ~full fiscal year
+      });
+    if (!annual.length) continue;
+    // Deduplicate by fiscal year-end date (keep latest filed per year)
+    const byYear = {};
+    annual.forEach(d => {
+      const year = d.end.slice(0,4);
+      if (!byYear[year] || d.filed > byYear[year].filed) byYear[year] = d;
+    });
+    const result = Object.entries(byYear)
+      .map(([year, d]) => ({ year: parseInt(year), value: d.val, end: d.end }))
+      .sort((a,b) => a.year - b.year);
+    if (result.length >= 3) return result; // only use if we got meaningful data
+  }
+  return [];
+}
+
+// Extract per-share values
+function extractPerShare(facts, concept) {
+  const gaap = facts.facts?.['us-gaap'];
+  if (!gaap) return [];
+  const candidates = Array.isArray(concept) ? concept : [concept];
+  for (const c of candidates) {
+    const data = gaap[c];
+    if (!data) continue;
+    for (const unit of ['USD/shares','shares','USD']) {
+      const units = data.units?.[unit];
+      if (!units) continue;
+      const annual = units
+        .filter(d => d.form === '10-K')
+        .filter(d => {
+          if (!d.start || !d.end) return true;
+          const days = (new Date(d.end) - new Date(d.start)) / 86400000;
+          return days >= 300 && days <= 410;
+        });
+      if (!annual.length) continue;
+      const byYear = {};
+      annual.forEach(d => {
+        const year = d.end.slice(0,4);
+        if (!byYear[year] || d.filed > byYear[year].filed) byYear[year] = d;
+      });
+      const result = Object.entries(byYear)
+        .map(([year, d]) => ({ year: parseInt(year), value: d.val }))
+        .sort((a,b) => a.year - b.year);
+      if (result.length >= 2) return result;
+    }
+  }
+  return [];
+}
+
+// Extract point-in-time balance sheet values (shares, equity)
+function extractPointInTime(facts, concept, unit='shares') {
+  const gaap = facts.facts?.['us-gaap'];
+  if (!gaap) return [];
+  const candidates = Array.isArray(concept) ? concept : [concept];
+  for (const c of candidates) {
+    const data = gaap[c];
+    if (!data) continue;
+    // Try requested unit first, then USD
+    for (const u of [unit, 'USD', 'shares']) {
+      const units = data.units?.[u];
+      if (!units) continue;
+      const annual = units.filter(d => d.form === '10-K');
+      if (!annual.length) continue;
+      const byYear = {};
+      annual.forEach(d => {
+        const year = d.end.slice(0,4);
+        if (!byYear[year] || d.filed > byYear[year].filed) byYear[year] = d;
+      });
+      const result = Object.entries(byYear)
+        .map(([year,d]) => ({ year: parseInt(year), value: d.val }))
+        .sort((a,b) => a.year - b.year);
+      if (result.length >= 2) return result;
+    }
+  }
+  return [];
+}
+
+// Build a year-keyed map from a series
+function toMap(series) {
+  const m = {};
+  series.forEach(d => { m[d.year] = d.value; });
+  return m;
+}
+
+// Detect and normalize stock splits in a shares map.
+// If shares jump by a factor close to a common split ratio (2,3,4,5,10,20),
+// retroactively adjust all earlier years to be on the post-split basis.
+function adjustForSplits(sharesMap) {
+  const SPLIT_RATIOS = [20, 10, 8, 5, 4, 3, 2];
+  const TOLERANCE = 0.12; // 12% tolerance around each ratio
+
+  const years = Object.keys(sharesMap).map(Number).sort((a,b)=>a-b);
+  if (years.length < 2) return sharesMap;
+
+  const adjusted = { ...sharesMap };
+
+  for (let i = 1; i < years.length; i++) {
+    const prev = adjusted[years[i-1]];
+    const curr = adjusted[years[i]];
+    if (!prev || !curr) continue;
+    const ratio = curr / prev;
+
+    for (const r of SPLIT_RATIOS) {
+      if (Math.abs(ratio - r) / r < TOLERANCE) {
+        // Split detected — multiply all prior years by the ratio
+        for (let j = 0; j < i; j++) {
+          if (adjusted[years[j]]) adjusted[years[j]] *= r;
+        }
+        break;
+      }
+      // Also check reverse (reverse split)
+      if (Math.abs(ratio - 1/r) / (1/r) < TOLERANCE) {
+        for (let j = 0; j < i; j++) {
+          if (adjusted[years[j]]) adjusted[years[j]] /= r;
+        }
+        break;
+      }
+    }
+  }
+  return adjusted;
+}
+
+// Get price + market cap from Yahoo Finance via Cloudflare Worker
+async function getPrice(ticker) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+    const data = await proxied(url);
+    const meta = data?.chart?.result?.[0]?.meta;
+    if (!meta) return null;
+    return { price: meta.regularMarketPrice, mktCap: meta.marketCap, currency: meta.currency };
+  } catch(e) { return null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UNIVERSE LOADER
+// ═══════════════════════════════════════════════════════════════════════════════
+async function loadUniverse() {
+  $('load-univ-btn').disabled = true;
+  setStatus('Loading EDGAR company list…');
+  try {
+    const data = await fetchTickerList();
+    ALL = Object.values(data).map(v => ({
+      ticker: v.ticker,
+      name:   v.title,
+      cik:    String(v.cik_str),
+      sic:    ''
+    }));
+    setStatus(`${ALL.length.toLocaleString()} companies loaded`, 'ok');
+    $('load-univ-btn').textContent = `☰ ${ALL.length.toLocaleString()} companies`;
+    $('load-univ-btn').classList.add('loaded');
+    $('sb-toggle').style.display = '';
+    $('sidebar').classList.remove('collapsed');
+    $('sb-toggle').textContent = '◀ Queue';
+    applyFilters();
+    updateSbProgress();
+  } catch(e) {
+    setStatus('Error: ' + e.message, 'err');
+  }
+  $('load-univ-btn').disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTOCOMPLETE
+// ═══════════════════════════════════════════════════════════════════════════════
+let acResults=[], acIdx=-1, acTimer=null, acCache={};
+
+const acOpen  = () => $('ac-dropdown').style.display !== 'none';
+const closeAC = () => { $('ac-dropdown').style.display='none'; acIdx=-1; };
+
+function onTickerInput() {
+  const q = $('inp-ticker').value.trim();
+  if (q.length < 1) { closeAC(); return; }
+  clearTimeout(acTimer);
+  acTimer = setTimeout(() => searchAC(q), 200);
+}
+
+async function searchAC(q) {
+  const upper = q.toUpperCase();
+  if (acCache[upper]) { renderAC(acCache[upper]); return; }
+
+  let results = [];
+  if (ALL.length > 0) {
+    const byTicker = ALL.filter(s => s.ticker.toUpperCase().startsWith(upper));
+    const byName   = ALL.filter(s => !s.ticker.toUpperCase().startsWith(upper) && s.name.toUpperCase().includes(upper));
+    results = [...byTicker, ...byName].slice(0, 8);
+  } else {
+    try {
+      const data = await fetchTickerList();
+      for (const [,v] of Object.entries(data)) {
+        if (v.ticker.toUpperCase().startsWith(upper) || v.title.toUpperCase().includes(upper)) {
+          results.push({ ticker: v.ticker, name: v.title, cik: String(v.cik_str) });
+        }
+        if (results.length >= 8) break;
+      }
+      results.sort((a,b) => (a.ticker.toUpperCase().startsWith(upper)?0:1)-(b.ticker.toUpperCase().startsWith(upper)?0:1) || a.ticker.localeCompare(b.ticker));
+    } catch(e) { return; }
+  }
+  acCache[upper] = results;
+  renderAC(results);
+}
+
+function renderAC(results) {
+  const dd = $('ac-dropdown');
+  acResults = results;
+  acIdx = -1;
+  if (!results.length) { dd.style.display='none'; return; }
+  dd.innerHTML = results.map((s,i) =>
+    `<div class="ac-item" data-idx="${i}" onmousedown="pickAC(${i})">
+      <span class="ac-ticker">${esc(s.ticker)}</span>
+      <span class="ac-name">${esc(s.name)}</span>
+      <span class="ac-cik">CIK ${s.cik}</span>
+    </div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function onTickerKeydown(e) {
+  if (!acOpen()) return;
+  if (e.key==='ArrowDown')      { e.preventDefault(); acIdx=Math.min(acIdx+1,acResults.length-1); highlightAC(); }
+  else if (e.key==='ArrowUp')   { e.preventDefault(); acIdx=Math.max(acIdx-1,-1); highlightAC(); }
+  else if (e.key==='Enter' && acIdx>=0) { e.preventDefault(); pickAC(acIdx); }
+  else if (e.key==='Escape')    { closeAC(); }
+}
+
+function highlightAC() {
+  document.querySelectorAll('.ac-item').forEach((el,i) => el.classList.toggle('ac-active',i===acIdx));
+  if (acIdx>=0 && acResults[acIdx]) $('inp-ticker').value = acResults[acIdx].ticker;
+}
+
+function pickAC(idx) {
+  const s = acResults[idx];
+  if (!s) return;
+  $('inp-ticker').value = s.ticker;
+  G.cik = s.cik;
+  closeAC();
+  runReport();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  const inp = $('inp-ticker');
+  inp.addEventListener('input',   onTickerInput);
+  inp.addEventListener('keydown', onTickerKeydown);
+  inp.addEventListener('blur',    () => setTimeout(closeAC, 150));
+  inp.addEventListener('keypress', e => { if(e.key==='Enter' && !acOpen()) runReport(); });
+  $('commentary-outlook').addEventListener('input', () => saveAnalysisNote('outlook'));
+  $('commentary-risk').addEventListener('input',    () => saveAnalysisNote('risk'));
+  ['inp-roe','inp-r','inp-p','inp-bv'].forEach(id => $(id)?.addEventListener('input', updateImplied));
+  document.addEventListener('keydown', e => {
+    if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+    if(e.key==='ArrowDown'||e.key==='j') navigateTo(1);
+    if(e.key==='ArrowUp'  ||e.key==='k') navigateTo(-1);
+  });
+  renderHistoryList();
+  updateSbProgress();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN REPORT RUNNER
+// ═══════════════════════════════════════════════════════════════════════════════
+async function runReport() {
+  const tickerRaw = $('inp-ticker').value.trim().toUpperCase();
+  if (!tickerRaw) { setStatus('Enter a ticker.','err'); return; }
+
+  $('run-btn').disabled = true;
+  $('report-empty').style.display = 'none';
+  $('report-content').style.display = 'block';
+  setStatus('Looking up company…'); progress(5);
+
+  try {
+    // ── Step 1: Resolve CIK ──────────────────────────────────────────────────
+    let cik = G.cik;
+    let ticker = tickerRaw;
+    let companyName = tickerRaw;
+
+    if (!cik) {
+      // Look up from local universe or fetch
+      if (ALL.length > 0) {
+        const found = ALL.find(s => s.ticker.toUpperCase() === tickerRaw);
+        if (found) { cik = found.cik; companyName = found.name; }
+      }
+      if (!cik) {
+        // Fetch ticker list via proxy and search
+        const data = await fetchTickerList();
+        for (const [,v] of Object.entries(data)) {
+          if (v.ticker.toUpperCase() === tickerRaw) {
+            cik = String(v.cik_str); companyName = v.title; break;
+          }
+        }
+      }
+    } else {
+      // CIK already known from autocomplete selection
+      const found = ALL.find(s => s.cik === cik);
+      if (found) companyName = found.name;
+    }
+
+    if (!cik) throw new Error(`Ticker "${tickerRaw}" not found in SEC EDGAR. Only US-listed companies are available.`);
+
+    G.ticker = ticker;
+    G.cik = cik;
+    setStatus('Fetching EDGAR filings…'); progress(15);
+
+    // ── Step 2: Fetch data in parallel ──────────────────────────────────────
+    const [facts, submissions, priceData] = await Promise.all([
+      edgarFacts(cik),
+      edgarSubmissions(cik),
+      getPrice(ticker),
+    ]);
+    progress(55); setStatus('Processing financials…');
+
+    // ── Step 3: Extract all series ───────────────────────────────────────────
+    const revSeries   = extractAnnual(facts, ['Revenues','RevenueFromContractWithCustomerExcludingAssessedTax','SalesRevenueNet','RevenueFromContractWithCustomerIncludingAssessedTax']);
+    const niSeries    = extractAnnual(facts, ['NetIncomeLoss','NetIncome']);
+    const ocfSeries   = extractAnnual(facts, ['NetCashProvidedByUsedInOperatingActivities']);
+    const capexSeries = extractAnnual(facts, ['PaymentsToAcquirePropertyPlantAndEquipment','CapitalExpendituresIncurredButNotYetPaid']);
+    const daSeries    = extractAnnual(facts, ['DepreciationDepletionAndAmortization','Depreciation']);
+    const acqSeries   = extractAnnual(facts, ['PaymentsToAcquireBusinessesNetOfCashAcquired','PaymentsToAcquireBusinessesGross']);
+    const buybackSeries= extractAnnual(facts, ['PaymentsForRepurchaseOfCommonStock','StockRepurchasedAndRetiredDuringPeriodValue']);
+    const divPaidSeries= extractAnnual(facts, ['PaymentsOfDividends','PaymentsOfDividendsCommonStock']);
+    const debtRepSeries= extractAnnual(facts, ['RepaymentsOfLongTermDebt','RepaymentsOfDebt']);
+    const debtIssued   = extractAnnual(facts, ['ProceedsFromIssuanceOfLongTermDebt','ProceedsFromDebt']);
+    const epsSeries    = extractPerShare(facts, ['EarningsPerShareDiluted','EarningsPerShareBasic']);
+    const divPerShare  = extractPerShare(facts, ['CommonStockDividendsPerShareDeclared','CommonStockDividendsPerShareCashPaid']);
+    const sharesSeries = extractPointInTime(facts, ['CommonStockSharesOutstanding','CommonStockSharesIssued']);
+    const equitySeries = extractAnnual(facts, ['StockholdersEquity','StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest'], 'USD');
+    const assetsSeries = extractAnnual(facts, ['Assets'], 'USD');
+    const bvpsSeries   = extractPerShare(facts, ['BookValuePerShareBasic']) ;
+
+    // Compute BVPS from equity/shares if not directly available
+    const equityMap = toMap(equitySeries);
+    const sharesMap = adjustForSplits(toMap(sharesSeries));
+    const bvpsMap   = toMap(bvpsSeries);
+    if (!Object.keys(bvpsMap).length) {
+      Object.keys(equityMap).forEach(y => {
+        const sh = sharesMap[y];
+        if (sh && sh > 0) bvpsMap[parseInt(y)] = equityMap[y] / sh;
+      });
+    }
+
+    const revMap    = toMap(revSeries);
+    const niMap     = toMap(niSeries);
+    const epsMap    = toMap(epsSeries);
+    const divMap    = toMap(divPerShare);
+    const ocfMap    = toMap(ocfSeries);
+    const capexMap  = toMap(capexSeries);
+    const daMap     = toMap(daSeries);
+    const acqMap    = toMap(acqSeries);
+    const buyMap    = toMap(buybackSeries);
+    const divPMap   = toMap(divPaidSeries);
+    const assetsMap = toMap(assetsSeries);
+
+    const debtNetMap = {};
+    toMap(debtRepSeries) && Object.keys(toMap(debtRepSeries)).forEach(y => {
+      debtNetMap[y] = -(toMap(debtRepSeries)[y]||0) + (toMap(debtIssued)[y]||0);
+    });
+
+    // ── Step 4: Determine available years (up to last 10) ───────────────────
+    const allYears = [...new Set([
+      ...Object.keys(revMap), ...Object.keys(niMap), ...Object.keys(epsMap)
+    ].map(Number))].sort((a,b)=>a-b);
+
+    const years = allYears.slice(-10);
+
+    // ── Step 5: Company metadata ─────────────────────────────────────────────
+    const fyEnd = submissions?.fiscalYearEnd || '';
+    const sic   = submissions?.sic || '';
+    const sicDesc = submissions?.sicDescription || '';
+    const stateInc = submissions?.stateOfIncorporation || '';
+
+    // ── Step 6: Price & PE ───────────────────────────────────────────────────
+    const price  = priceData?.price || null;
+    const mktCap = priceData?.mktCap || null;
+    const lastEPS = epsMap[years[years.length-1]] || null;
+    const peRatio = price && lastEPS && lastEPS > 0 ? price/lastEPS : null;
+
+    // ── Step 7: Render everything ────────────────────────────────────────────
+    renderHeader(companyName, ticker, sicDesc, stateInc, fyEnd, price, mktCap, peRatio);
+    progress(60);
+    renderMainTable(years, revMap, niMap, epsMap, divMap, sharesMap, bvpsMap, peRatio);
+    progress(68);
+    render5Factor(years, revMap, niMap, epsMap, sharesMap, peRatio, divMap);
+    progress(74);
+    renderDuPont(years, revMap, niMap, equityMap, assetsMap, sharesMap);
+    progress(80);
+    renderCashDeployment(years, ocfMap, capexMap, daMap, acqMap, buyMap, divPMap, debtNetMap);
+    renderRightPanel(years, revMap, niMap, epsMap, divMap, sharesMap, bvpsMap, equityMap, assetsMap, price);
+    progress(90);
+
+    loadAnalysisNotes(ticker);
+    saveToHistory(ticker, companyName, sicDesc);
+    $('footer-ticker').textContent = `${ticker} · ${companyName} · ${new Date().toLocaleDateString()} · SEC EDGAR`;
+    document.title = `5-Factor — ${ticker}`;
+    progress(100);
+    setStatus(`${ticker} · ${new Date().toLocaleTimeString()}`, 'ok');
+
+  } catch(e) {
+    progress(100);
+    setStatus('Error: ' + e.message, 'err');
+    console.error(e);
+  }
+  $('run-btn').disabled = false;
+  G.cik = ''; // reset for next manual entry
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderHeader(name, ticker, sic, state, fyEnd, price, mktCap, pe) {
+  $('hdr-name').innerHTML = esc(name) + ` &nbsp;<span style="font-weight:300;font-size:12px;color:#889">${ticker}</span>`;
+  $('hdr-exchange').textContent = [sic, state].filter(Boolean).join(' · ');
+  $('hdr-price').textContent   = price  ? '$' + price.toFixed(2) : '—';
+  $('hdr-mktcap').textContent  = mktCap ? fM(mktCap) : '—';
+  $('hdr-pe').textContent      = pe     ? pe.toFixed(1) + '×' : '—';
+  $('hdr-fy').textContent      = fyEnd  ? fyEnd.slice(4)+'/'+fyEnd.slice(0,4) : '—';
+}
+
+function renderMainTable(years, revMap, niMap, epsMap, divMap, sharesMap, bvpsMap, currentPE) {
+  const hrRow = $('yr-header-row');
+  hrRow.innerHTML = `<td class="row-label" style="background:#111827;color:#666;font-size:8px;letter-spacing:.08em;">FISCAL YEAR</td>`;
+  years.forEach(y => hrRow.innerHTML += `<td class="yr-head">${y}</td>`);
+
+  const rows = [
+    { section: 'Per Share Data' },
+    { label: 'Revenue per share ($)', fn: y => { const r=revMap[y], s=sharesMap[y]; return r&&s&&s>0?(r/s).toFixed(2):'—'; }},
+    { label: 'Earnings per share ($)', fn: y => epsMap[y]!=null ? epsMap[y].toFixed(2) : '—' },
+    { label: 'Dividends declared ($)', fn: y => divMap[y]!=null ? divMap[y].toFixed(2) : '—' },
+    { label: 'Book value per share ($)', fn: y => bvpsMap[y]!=null ? (bvpsMap[y]/1).toFixed(2) : '—' },
+    { sep: true },
+    { section: 'Company Financials ($B)' },
+    { label: 'Revenue', fn: y => revMap[y]!=null ? fB(revMap[y]) : '—' },
+    { label: 'Net income', fn: y => niMap[y]!=null ? fB(niMap[y]) : '—' },
+    { label: 'Net margin (%)', fn: y => revMap[y]&&niMap[y]!=null ? fP(niMap[y]/revMap[y]*100) : '—' },
+    { label: 'Shares outstanding (B)', fn: y => sharesMap[y]!=null ? (sharesMap[y]/1e9).toFixed(2) : '—' },
+    { sep: true },
+    { section: 'Valuation' },
+    { label: 'Trailing P/E', fn: y => { const e=epsMap[y]; return e&&e>0&&currentPE?fX(currentPE):'—'; }, note: 'current' },
+    { label: 'Net margin (%)', fn: y => revMap[y]&&niMap[y]!=null ? fP(niMap[y]/revMap[y]*100) : '—' },
+    { sep: true },
+    { section: 'Returns' },
+    { label: 'ROE (%)', fn: y => { const eq=getEquity(y,revMap,niMap); const ni=niMap[y]; return eq&&ni!=null?fP(ni/eq*100):'—'; }},
+    { label: 'ROIC (%)', fn: y => {
+      const ni=niMap[y]; const eq=getEquity(y); return ni!=null&&eq?fP(ni/eq*100):'—';
+    }, highlight: true },
+  ];
+
+  // Helper for equity
+  function getEquity(y) {
+    // This is a closure issue — we need equity passed in
+    return null; // placeholder, actual equity rendered in DuPont
+  }
+
+  let html = '';
+  rows.forEach(row => {
+    if (row.sep) {
+      html += `<tr class="sep-row"><td class="row-label"></td>${years.map(()=>'<td></td>').join('')}</tr>`;
+    } else if (row.section) {
+      html += `<tr class="section-head"><td class="row-label">${row.section}</td><td colspan="${years.length}"></td></tr>`;
+    } else {
+      html += `<tr class="${row.highlight?'highlight-row':''}"><td class="row-label">${row.label}</td>`;
+      years.forEach(y => { html += `<td>${row.fn(y)}</td>`; });
+      html += `</tr>`;
+    }
+  });
+  $('main-tbody').innerHTML = html;
+}
+
+function render5Factor(years, revMap, niMap, epsMap, sharesMap, currentPE, divMap) {
+  const n      = Math.min(10, years.length - 1);
+  if (n < 1) { $('ff-tbody').innerHTML = '<tr><td class="left" colspan="6" style="color:#aaa;padding:8px 10px">Insufficient data for decomposition.</td></tr>'; return; }
+  const yStart = years[years.length - 1 - n];
+  const yEnd   = years[years.length - 1];
+  $('ff-header-label').textContent = `5-Factor Return Decomposition — ${n}-Year Period (${yStart} → ${yEnd})`;
+
+  const revStart = revMap[yStart], revEnd = revMap[yEnd];
+  const shStart  = sharesMap[yStart], shEnd = sharesMap[yEnd];
+  const mStart   = revStart ? niMap[yStart]/revStart*100 : null;
+  const mEnd     = revEnd   ? niMap[yEnd]/revEnd*100     : null;
+
+  // P/E: use current PE for end year; estimate start year PE via price ratio approximation
+  // Without historical prices we can only show current PE — note this limitation
+  const peEnd   = currentPE;
+  const peStart = null; // Historical P/E not available from EDGAR
+
+  const revMult = revStart&&revEnd ? revEnd/revStart : null;
+  const shMult  = shStart&&shEnd ? 1/(shEnd/shStart) : null;
+  const mMult   = mStart&&mEnd ? mEnd/mStart : null;
+
+  G.revCagr10 = cagr(revEnd, revStart, n);
+
+  // Avg dividend per share over the period (used as proxy since we lack historical prices for yield)
+  const avgDivPerSh = avg(years.slice(-n).map(y => divMap[y] || 0));
+  const divTotalPerSh = avgDivPerSh != null ? avgDivPerSh * n : null;
+
+  const row = (lbl, badge, v1, v2, cumVal, annVal, multVal) => `<tr>
+    <td class="left">${lbl} <span class="badge ${badge==='×'?'badge-mul':'badge-add'}">${badge}</span></td>
+    <td>${v1}</td><td>${v2}</td>
+    <td class="${cc(cumVal)}">${pct(cumVal)}</td>
+    <td class="${cc(annVal)}">${annVal!=null?pct(annVal)+' / yr':'—'}</td>
+    <td class="${cc(multVal!=null?multVal-1:null)}">${multVal!=null?'× '+multVal.toFixed(2):'—'}</td>
+  </tr>`;
+
+  let html = '';
+  html += row('Revenue growth','×', revStart?fM(revStart):'—', revEnd?fM(revEnd):'—', revMult?(revMult-1)*100:null, G.revCagr10, revMult);
+  html += row('Share count change','×', shStart?(shStart/1e9).toFixed(2)+'B shs':'—', shEnd?(shEnd/1e9).toFixed(2)+'B shs':'—', shMult?(1/shMult-1)*100:null, cagr(shEnd,shStart,n), shMult);
+  html += row('Net margin change','×', fP(mStart), fP(mEnd), mMult?(mMult-1)*100:null, cagr(mEnd,mStart,n), mMult);
+  html += `<tr>
+    <td class="left">Valuation (P/E) change <span class="badge badge-mul">×</span></td>
+    <td>—</td><td>${peEnd?peEnd.toFixed(1)+'×':'—'}</td>
+    <td colspan="2" style="color:#aaa;font-style:italic;font-size:9px">Historical P/E not in EDGAR — enter manually below</td>
+    <td>—</td>
+  </tr>`;
+  html += `<tr>
+    <td class="left">Dividend (avg/sh) <span class="badge badge-add">+</span></td>
+    <td>${divMap[yStart]!=null?'$'+divMap[yStart].toFixed(2):'—'}</td>
+    <td>${divMap[yEnd]!=null?'$'+divMap[yEnd].toFixed(2):'—'}</td>
+    <td style="color:#777">$${avgDivPerSh!=null?avgDivPerSh.toFixed(2):'—'}/sh avg</td>
+    <td style="color:#777">$${avgDivPerSh!=null?avgDivPerSh.toFixed(2):'—'}/sh yr</td>
+    <td style="color:#aaa;font-style:italic;font-size:9px">yield needs price history</td>
+  </tr>`;
+
+  // Partial total (without P/E multiple which needs historical prices)
+  const partialTotal = revMult&&shMult&&mMult ? (revMult*shMult*mMult-1)*100 : null;
+  html += `<tr class="formula-row"><td class="left" colspan="4" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#777">
+    = (1+RevΔ) × 1/(1+ShareΔ) × (1+MarginΔ) × (1+P/EΔ) + DivYield
+    &nbsp;—&nbsp; Add historical P/E start in right panel to complete
+  </td><td colspan="2"></td></tr>`;
+  html += `<tr class="total-row">
+    <td class="left" style="font-size:10px;font-weight:600">Operating return (ex-multiple)</td>
+    <td colspan="4" style="color:#777;font-size:9px;text-align:left;padding-left:10px">Rev × Share × Margin only · ${n}-year period</td>
+    <td class="${cc(partialTotal)}" style="font-size:13px">${partialTotal!=null?pct(cagr(1+partialTotal/100,1,n))+' / yr':'—'}</td>
+  </tr>`;
+
+  $('ff-tbody').innerHTML = html;
+}
+
+function renderDuPont(years, revMap, niMap, equityMap, assetsMap, sharesMap) {
+  const last5 = years.slice(-5);
+  last5.forEach((y,i) => { $(`dp-y${i+1}`).textContent = y; });
+
+  const nm  = last5.map(y => revMap[y]&&niMap[y]!=null ? niMap[y]/revMap[y]*100 : null);
+  const at  = last5.map(y => assetsMap[y]&&revMap[y]  ? revMap[y]/assetsMap[y] : null);
+  const em  = last5.map(y => equityMap[y]&&assetsMap[y]&&equityMap[y]!==0 ? assetsMap[y]/equityMap[y] : null);
+  const roe = last5.map((_,i) => nm[i]&&at[i]&&em[i] ? nm[i]*at[i]*em[i] : null);
+
+  const rows = [
+    { label:'Net margin', note:'Net income / Revenue', vals:nm, fmt:fP },
+    { label:'Asset turnover', note:'Revenue / Assets', vals:at, fmt:v=>v!=null?v.toFixed(2)+'×':'—' },
+    { label:'Equity multiplier', note:'Assets / Equity', vals:em, fmt:v=>v!=null?v.toFixed(2)+'×':'—', warn:true },
+    { formula:true },
+    { label:'ROE (DuPont)', vals:roe, fmt:fP, bold:true },
+  ];
+
+  let html = '';
+  rows.forEach(row => {
+    if (row.formula) {
+      const yr=last5[last5.length-1], m=nm[nm.length-1], a=at[at.length-1], e=em[em.length-1], r=roe[roe.length-1];
+      html += `<tr class="formula-row"><td class="left" colspan="7" style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#777">
+        ROE = Net Margin × Asset Turnover × Equity Multiplier &nbsp;&nbsp;[${yr}]: ${fP(m)} × ${a!=null?a.toFixed(2)+'×':'?'} × ${e!=null?e.toFixed(2)+'×':'?'} = ${fP(r)}</td></tr>`;
+      return;
+    }
+    const av = avg(row.vals), cls = row.bold?'total-row':'';
+    html += `<tr class="${cls}"><td class="left">${row.label}${row.note?` &nbsp;<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#aaa">${row.note}</span>`:''}</td>`;
+    row.vals.forEach(v => { html += `<td class="${row.warn?cc(v!=null?-(v-1):null):cc(v)}">${row.fmt(v)}</td>`; });
+    html += `<td class="${cc(av)}" style="${row.bold?'font-size:13px':'font-weight:500'}">${row.fmt(av)}</td></tr>`;
+  });
+
+  // Store ROE avg for implied growth
+  G.avgROE5 = avg(roe);
+  $('dp-tbody').innerHTML = html;
+}
+
+function renderCashDeployment(years, ocfMap, capexMap, daMap, acqMap, buyMap, divPMap, debtNetMap) {
+  const last5 = years.slice(-5);
+  last5.forEach((y,i) => { $(`csh-y${i+1}`).textContent = y; });
+
+  const fc  = v => v==null?'—':(v>=0?'+':'')+v.toFixed(1);
+  const fcls= v => v==null?'':v>0?'pos-val':'neg-val';
+  const avFn= arr => avg(arr.filter(v=>v!=null));
+
+  const ocf   = last5.map(y => ocfMap[y]!=null   ? ocfMap[y]/1e9      : null);
+  const capex = last5.map(y => capexMap[y]!=null  ? -capexMap[y]/1e9   : null);
+  const da    = last5.map(y => daMap[y]!=null     ? daMap[y]/1e9       : null);
+  const acq   = last5.map(y => acqMap[y]!=null    ? -acqMap[y]/1e9     : null);
+  const buy   = last5.map(y => buyMap[y]!=null    ? -buyMap[y]/1e9     : null);
+  const divP  = last5.map(y => divPMap[y]!=null   ? -divPMap[y]/1e9    : null);
+  const debt  = last5.map(y => debtNetMap[y]!=null? debtNetMap[y]/1e9  : null);
+  const total = last5.map((_,i) => [capex[i],acq[i],buy[i],divP[i],debt[i]].reduce((s,v)=>s+(v||0),0));
+  const pctOCF= last5.map((_,i) => ocf[i] ? total[i]/ocf[i]*100 : null);
+
+  const fV  = v => v==null?'—':(v>=0?'+':'')+v.toFixed(1);
+  const mkRow = (lbl, dot, vals, sub=false) => {
+    const sc = sub ? 'cash-row sub-row' : 'cash-row';
+    const ls = sub ? 'padding-left:18px;font-size:8px;color:#aaa' : '';
+    const av2 = avFn(vals);
+    let h = `<div class="${sc}"><div class="lbl" style="${ls}">`;
+    if (dot && !sub) h += `<span class="cash-dot" style="background:${dot}"></span>`;
+    h += `${lbl}</div>`;
+    [...vals, av2].forEach(v => {
+      h += `<div class="${sub?'':''+fcls(v)}" style="${sub?'font-size:9px;color:#aaa':''}">${v!=null?fV(v):'—'}</div>`;
+    });
+    h += `</div>`; return h;
+  };
+
+  let html = '';
+  html += mkRow('Operating cash flow', null, ocf);
+  html += mkRow('Capex', '#1a3a6b', capex);
+  html += mkRow('Depreciation &amp; amortization', null, da, true);
+  html += mkRow('Acquisitions (net)', '#7c3aed', acq);
+  html += mkRow('Share repurchases', '#059669', buy);
+  html += mkRow('Dividends paid', '#d97706', divP);
+  html += mkRow('Net debt change', '#dc2626', debt);
+
+  const av2 = avFn(total);
+  html += `<div class="cash-row total-row"><div class="lbl" style="font-weight:600">Total deployed</div>`;
+  [...total, av2].forEach(v => { html += `<div>${fc(v)}</div>`; });
+  html += `</div>`;
+  html += `<div class="cash-row sub-row"><div class="lbl" style="font-size:8px;color:#aaa">as % of OCF</div>`;
+  [...pctOCF, avFn(pctOCF)].forEach(v => { html += `<div style="font-size:9px;color:#aaa">${v!=null?v.toFixed(0)+'%':'—'}</div>`; });
+  html += `</div>`;
+
+  $('cash-rows').innerHTML = html;
+
+  // Stacked bar
+  const tot = Math.abs(avFn(total)) || 1;
+  const pcts = {
+    capex: Math.abs(avFn(capex)||0)/tot*100,
+    acq:   Math.abs(avFn(acq)  ||0)/tot*100,
+    buy:   Math.abs(avFn(buy)  ||0)/tot*100,
+    div:   Math.abs(avFn(divP) ||0)/tot*100,
+    debt:  Math.abs(avFn(debt) ||0)/tot*100,
+  };
+  const old = document.getElementById('cash-legend');
+  if (old) old.remove();
+  const el = document.createElement('div');
+  el.id = 'cash-legend';
+  el.style.cssText = 'padding:6px 10px 4px;display:flex;align-items:center;gap:14px;border-top:0.5px solid #c8c8c8;background:#f0ede6';
+  el.innerHTML = `<span style="font-size:8px;color:#777;font-weight:500;letter-spacing:.08em;text-transform:uppercase">5yr avg split:</span>
+    <div style="flex:1;height:10px;border-radius:2px;overflow:hidden;display:flex">
+      <div style="width:${pcts.capex.toFixed(1)}%;background:#1a3a6b;opacity:.8"></div>
+      <div style="width:${pcts.acq.toFixed(1)}%;background:#7c3aed;opacity:.8"></div>
+      <div style="width:${pcts.buy.toFixed(1)}%;background:#059669;opacity:.8"></div>
+      <div style="width:${pcts.div.toFixed(1)}%;background:#d97706;opacity:.8"></div>
+      <div style="width:${pcts.debt.toFixed(1)}%;background:#dc2626;opacity:.8"></div>
+    </div>
+    <div style="display:flex;gap:10px;font-size:8px;color:#777">
+      <span>■ Capex ${pcts.capex.toFixed(0)}%</span>
+      <span style="color:#7c3aed">■ M&A ${pcts.acq.toFixed(0)}%</span>
+      <span style="color:#059669">■ Buybacks ${pcts.buy.toFixed(0)}%</span>
+      <span style="color:#d97706">■ Divs ${pcts.div.toFixed(0)}%</span>
+      <span style="color:#dc2626">■ Debt ${pcts.debt.toFixed(0)}%</span>
+    </div>`;
+  $('cash-note').parentNode.insertBefore(el, $('cash-note'));
+}
+
+function renderRightPanel(years, revMap, niMap, epsMap, divMap, sharesMap, bvpsMap, equityMap, assetsMap, price) {
+  const s = years; // already sorted ascending
+  const setC = (id,v) => { const el=$(id); if(!el) return; el.textContent=v!=null?pct(v):'—'; el.className=cc(v); };
+
+  const rv10=cagr(revMap[s[s.length-1]],  revMap[s[Math.max(0,s.length-11)]], 10);
+  const rv5 =cagr(revMap[s[s.length-1]],  revMap[s[Math.max(0,s.length-6)]],  5);
+  const ep10=cagr(epsMap[s[s.length-1]],  epsMap[s[Math.max(0,s.length-11)]], 10);
+  const ep5 =cagr(epsMap[s[s.length-1]],  epsMap[s[Math.max(0,s.length-6)]],  5);
+  const dv10=cagr(divMap[s[s.length-1]],  divMap[s[Math.max(0,s.length-11)]], 10);
+  const dv5 =cagr(divMap[s[s.length-1]],  divMap[s[Math.max(0,s.length-6)]],  5);
+  const bv10=cagr(bvpsMap[s[s.length-1]], bvpsMap[s[Math.max(0,s.length-11)]],10);
+  const bv5 =cagr(bvpsMap[s[s.length-1]], bvpsMap[s[Math.max(0,s.length-6)]], 5);
+  const sh10=cagr(sharesMap[s[s.length-1]],sharesMap[s[Math.max(0,s.length-11)]],10);
+  const sh5 =cagr(sharesMap[s[s.length-1]],sharesMap[s[Math.max(0,s.length-6)]], 5);
+
+  setC('cagr-rev-10',rv10); setC('cagr-rev-5',rv5);
+  setC('cagr-eps-10',ep10); setC('cagr-eps-5',ep5);
+  setC('cagr-div-10',dv10); setC('cagr-div-5',dv5);
+  setC('cagr-bv-10', bv10); setC('cagr-bv-5', bv5);
+  setC('cagr-sh-10', sh10); setC('cagr-sh-5', sh5);
+
+  // ROE / ROIC last 5 years
+  const last5 = s.slice(-5);
+  let rHtml = '', roeVals = [], roicVals = [];
+  last5.forEach(y => {
+    const eq = equityMap[y], ni = niMap[y], ast = assetsMap[y];
+    const roe  = eq&&ni!=null&&eq!==0 ? ni/eq*100 : null;
+    // ROIC approx: NOPAT / Invested Capital = NI / (equity + LTD approx)
+    // Without LTD from EDGAR separately, use equity as proxy for simplicity
+    const roic = eq&&ni!=null&&eq!==0 ? ni/eq*100 : null;
+    if (roe!=null) roeVals.push(roe);
+    if (roic!=null) roicVals.push(roic);
+    rHtml += `<tr><td>${y}</td><td class="${cc(roe)}">${fP(roe)}</td><td class="${cc(roic)}">${fP(roic)}</td></tr>`;
+  });
+  const avgROE = avg(roeVals), avgROIC = avg(roicVals);
+  G.avgROE5 = avgROE;
+  rHtml += `<tr class="avg-row"><td>Avg</td><td class="${cc(avgROE)}">${fP(avgROE)}</td><td class="${cc(avgROIC)}">${fP(avgROIC)}</td></tr>`;
+  $('roe-tbody').innerHTML = rHtml;
+
+  // Seed implied growth inputs
+  const lastY   = s[s.length-1];
+  const bvps    = bvpsMap[lastY];
+  if (avgROE!=null) $('inp-roe').value = avgROE.toFixed(1);
+  if (price)        $('inp-p').value   = price.toFixed(2);
+  if (bvps)         $('inp-bv').value  = (bvps > 1000 ? bvps/1e6 : bvps > 100 ? bvps/1000 : bvps).toFixed(2);
+  updateImplied();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IMPLIED GROWTH
+// ═══════════════════════════════════════════════════════════════════════════════
+function updateImplied() {
+  const roe=parseFloat($('inp-roe').value)/100, r=parseFloat($('inp-r').value)/100;
+  const p=parseFloat($('inp-p').value), bv=parseFloat($('inp-bv').value);
+  if([roe,r,p,bv].some(v=>isNaN(v)||v<=0)) return;
+  const pbv=p/bv, g=(pbv*r-roe)/(pbv+roe), gP=g*100;
+  $('disp-pbv').textContent=pbv.toFixed(1)+'×';
+  $('disp-roe-used').textContent=(roe*100).toFixed(1)+'%';
+  $('disp-r-used').textContent=(r*100).toFixed(1)+'%';
+  const gEl=$('disp-g'); gEl.textContent=(gP>=0?'+':'')+gP.toFixed(1)+'%'; gEl.style.color=gP>=0?'var(--pos)':'var(--neg)';
+  const ref=G.revCagr10||0, diff=gP-ref, vEl=$('disp-verdict');
+  if(!ref){vEl.textContent='';return;}
+  if(diff<-3){vEl.textContent=`Below ${ref.toFixed(1)}% rev CAGR — possible undervaluation`;vEl.style.color='#1a6b3a';}
+  else if(diff>3){vEl.textContent=`Above ${ref.toFixed(1)}% rev CAGR — pricing in acceleration`;vEl.style.color='#8b1a1a';}
+  else{vEl.textContent=`Inline with ${ref.toFixed(1)}% 10-yr revenue CAGR`;vEl.style.color='#7a6000';}
+}
+function resetROE(){ $('inp-roe').value=G.avgROE5?.toFixed(1)||0; updateImplied(); }
+function resetVal(id,v){ $(id).value=v; updateImplied(); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ANALYSIS NOTES
+// ═══════════════════════════════════════════════════════════════════════════════
+function loadAnalysisNotes(ticker) {
+  const notes = window._analysisNotes || {};
+  $('commentary-outlook').value = notes[ticker]?.outlook || '';
+  $('commentary-risk').value    = notes[ticker]?.risk    || '';
+  $('commentary-sig').textContent = notes[ticker] ? `Last edited ${notes[ticker].date}` : '';
+}
+
+function saveAnalysisNote(field) {
+  const ticker = G.ticker;
+  if (!ticker) return;
+  if (!window._analysisNotes) window._analysisNotes = {};
+  if (!window._analysisNotes[ticker]) window._analysisNotes[ticker] = {};
+  window._analysisNotes[ticker][field] = field==='outlook' ? $('commentary-outlook').value : $('commentary-risk').value;
+  window._analysisNotes[ticker].date   = new Date().toLocaleDateString();
+  $('commentary-sig').textContent      = `Last edited ${window._analysisNotes[ticker].date}`;
+  localStorage.setItem('vl5_analysis', JSON.stringify(window._analysisNotes));
+  if (window._db && window._doc && window._setDoc)
+    window._setDoc(window._doc(window._db,'analysis',ticker), window._analysisNotes[ticker]).catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════════════════════════
+function saveToHistory(ticker, name, sic) {
+  const h = window._history || [];
+  const entry = { ticker, name, sic, ts: Date.now(), date: new Date().toLocaleDateString() };
+  window._history = [entry, ...h.filter(x=>x.ticker!==ticker)].slice(0, 100);
+  localStorage.setItem('vl5_history', JSON.stringify(window._history));
+  if (window._saveToHistory) window._saveToHistory(ticker, name, sic);
+  renderHistoryList();
+}
+
+function renderHistoryList() {
+  const hist = window._history || [];
+  const panel = $('history-list');
+  if (!panel) return;
+  if (!hist.length) { panel.innerHTML = '<div style="color:#aaa;font-size:10px;padding:8px 10px;font-style:italic">No history yet.</div>'; return; }
+  panel.innerHTML = hist.slice(0,50).map(h => `
+    <div class="ci" onclick="document.getElementById('inp-ticker').value='${h.ticker}';G.cik='';runReport()">
+      <div>
+        <div class="ci-top"><span class="ci-tk">${h.ticker}</span><span class="ci-nm">${esc(h.name||'')}</span></div>
+        <div class="ci-sub">${h.date||''}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SIDEBAR / QUEUE
+// ═══════════════════════════════════════════════════════════════════════════════
+function toggleSidebar() {
+  const sb = $('sidebar');
+  sb.classList.toggle('collapsed');
+  $('sb-toggle').textContent = sb.classList.contains('collapsed') ? '☰ Queue' : '◀ Queue';
+}
+
+function applyFilters() {
+  const q  = $('sb-search').value.trim().toUpperCase();
+  const lf = $('sb-label-filter').value;
+  FILTERED = ALL.filter(s => {
+    if (q && !s.ticker.toUpperCase().includes(q) && !s.name.toUpperCase().includes(q)) return false;
+    if (lf==='_unlabeled' && labelsMap[s.ticker]) return false;
+    if (lf && lf!=='_unlabeled' && labelsMap[s.ticker]!==lf) return false;
+    return true;
+  });
+  if (SORT==='az') FILTERED.sort((a,b)=>a.ticker.localeCompare(b.ticker));
+  else if (SORT==='za') FILTERED.sort((a,b)=>b.ticker.localeCompare(a.ticker));
+  else FILTERED.sort((a,b)=>(labelsMap[b.ticker]?1:0)-(labelsMap[a.ticker]?1:0));
+  $('sb-count').textContent = FILTERED.length.toLocaleString() + ' companies';
+  renderList();
+}
+
+function cycleSort() {
+  const m=['az','za','labeled'], l=['A→Z','Z→A','Labeled'];
+  SORT = m[(m.indexOf(SORT)+1)%m.length];
+  $('sb-sort-btn').textContent = l[m.indexOf(SORT)];
+  applyFilters();
+}
+
+function renderList() {
+  const LIMIT = 400;
+  const items = FILTERED.slice(0, LIMIT);
+  let html = '';
+  items.forEach((s,i) => {
+    const lbl = labelsMap[s.ticker];
+    const pill = lbl ? `<span class="lp ${LABELS[lbl].cls}">${LABELS[lbl].text}</span>` : '';
+    html += `<div class="ci${CUR_IDX===i?' active':''}" onclick="selectFromQueue(${i})" data-idx="${i}">
+      <div>
+        <div class="ci-top"><span class="ci-tk">${s.ticker}</span><span class="ci-nm">${esc(s.name)}</span></div>
+        <div class="ci-sub">CIK ${s.cik}</div>
+      </div>
+      <div>${pill}</div>
+    </div>`;
+  });
+  if (FILTERED.length > LIMIT) html += `<div style="padding:8px;text-align:center;font-size:9px;color:#aaa">Showing ${LIMIT} of ${FILTERED.length.toLocaleString()} — use search to narrow</div>`;
+  $('company-list').innerHTML = html || '<div style="padding:16px;color:#aaa;font-size:11px;text-align:center">No results.</div>';
+}
+
+function updateSbProgress() {
+  const labeled = Object.keys(labelsMap).length;
+  const total   = ALL.length || 1;
+  $('sb-prog-fill').style.width = (labeled/total*100).toFixed(1)+'%';
+  $('sb-prog-text').textContent = `${labeled.toLocaleString()} labeled`;
+}
+
+function switchTab(tab) {
+  const isQ = tab === 'queue';
+  $('company-list').style.display  = isQ ? 'block' : 'none';
+  $('history-list').style.display  = isQ ? 'none'  : 'block';
+  $('tab-queue').classList.toggle('active',  isQ);
+  $('tab-history').classList.toggle('active',!isQ);
+}
+
+function selectFromQueue(idx) {
+  CUR_IDX = idx;
+  const s = FILTERED[idx];
+  if (!s) return;
+  document.querySelectorAll('.ci').forEach(el => el.classList.toggle('active', parseInt(el.dataset.idx)===idx));
+  $('inp-ticker').value = s.ticker;
+  G.cik = s.cik;
+  showLabelBand(s.ticker);
+  $('btn-prev').disabled = idx <= 0;
+  $('btn-next').disabled = idx >= FILTERED.length - 1;
+  runReport();
+}
+
+function navigateTo(delta) {
+  const next = CUR_IDX + delta;
+  if (next < 0 || next >= FILTERED.length) return;
+  selectFromQueue(next);
+  document.querySelectorAll('.ci')[next]?.scrollIntoView({ block:'nearest' });
+}
+
+function showLabelBand(ticker) {
+  $('label-band').style.display = 'flex';
+  $('notes-area').value = notesMap[ticker] || '';
+  renderLabelPicker(ticker);
+}
+
+function renderLabelPicker(ticker) {
+  const cur = labelsMap[ticker];
+  let html = `<span class="lp lp-opt lp-none${!cur?' sel':''}" onclick="setLabel('${ticker}',null)">No label</span>`;
+  Object.entries(LABELS).forEach(([k,v]) => {
+    html += `<span class="lp lp-opt ${v.cls}${cur===k?' sel':''}" onclick="setLabel('${ticker}','${k}')">${v.text}</span>`;
+  });
+  $('label-picker').innerHTML = html;
+}
+
+function setLabel(ticker, label) {
+  if (label) labelsMap[ticker] = label; else delete labelsMap[ticker];
+  window.saveLabels();
+  renderLabelPicker(ticker);
+  renderList();
+  updateSbProgress();
+  if (window._db && window._doc && window._setDoc) {
+    if (label) window._setDoc(window._doc(window._db,'labels',ticker),{label}).catch(()=>{});
+    else import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js')
+      .then(({deleteDoc})=>deleteDoc(window._doc(window._db,'labels',ticker)).catch(()=>{}));
+  }
+}
+
+function saveNote() {
+  const ticker = G.ticker;
+  if (!ticker) return;
+  const v = $('notes-area').value;
+  if (v) notesMap[ticker] = v; else delete notesMap[ticker];
+  window.saveNotes();
+  if (window._db && window._doc && window._setDoc && v)
+    window._setDoc(window._doc(window._db,'notes',ticker),{text:v}).catch(()=>{});
+}
+</script>
+
+<!-- FIREBASE -->
+<script type="module">
+import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyA0evpF4Egm_WSIIPiQl_T8lI0uOVulexc",
+  authDomain:        "factor-report.firebaseapp.com",
+  projectId:         "factor-report",
+  storageBucket:     "factor-report.firebasestorage.app",
+  messagingSenderId: "632728435507",
+  appId:             "1:632728435507:web:b758bc67546538fd885c46"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+window._db = db; window._doc = doc; window._setDoc = setDoc;
+
+// Show PIN immediately
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('pin-overlay').style.display = 'flex';
+});
+
+window.addEventListener('load', async () => {
+  try {
+    const snap = await getDoc(doc(db,'config','pin'));
+    showPINPrompt(snap.exists() ? 'enter' : 'create');
+  } catch(e) {
+    document.getElementById('pin-overlay').style.display = 'none';
+    console.warn('Firebase unavailable, skipping PIN:', e.message);
+  }
+});
+
+async function loadFromFirestore() {
+  try {
+    const [labSnap, notSnap, histSnap, analSnap] = await Promise.all([
+      getDocs(collection(db,'labels')),
+      getDocs(collection(db,'notes')),
+      getDocs(collection(db,'history')),
+      getDocs(collection(db,'analysis')),
+    ]);
+    labSnap.forEach(d  => { window.labelsMap[d.id] = d.data().label; });
+    notSnap.forEach(d  => { window.notesMap[d.id]  = d.data().text; });
+    const hist = [];
+    histSnap.forEach(d => hist.push(d.data()));
+    hist.sort((a,b)=>(b.ts||0)-(a.ts||0));
+    window._history = hist;
+    analSnap.forEach(d => { window._analysisNotes[d.id] = d.data(); });
+    localStorage.setItem('vl5_analysis', JSON.stringify(window._analysisNotes));
+    window.renderHistoryList?.();
+    window.updateSbProgress?.();
+  } catch(e) { console.warn('Firestore load:', e); }
+}
+
+window._saveToHistory = async (ticker, name, sic) => {
+  const entry = { ticker, name:name||ticker, sic:sic||'', ts:Date.now(), date:new Date().toLocaleDateString() };
+  try { await setDoc(doc(db,'history',ticker+'_'+Date.now()), entry); } catch(e){}
+};
+
+function showPINPrompt(mode) {
+  const overlay=$('pin-overlay'), title=$('pin-title'), sub=$('pin-sub'), btn=$('pin-btn'), err=$('pin-err');
+  overlay.style.display='flex'; err.textContent='';
+  if (mode==='create') {
+    title.textContent='Create your PIN';
+    sub.textContent='Choose a PIN — you\'ll need it every time you open the app.';
+    btn.textContent='Set PIN';
+    document.getElementById('pin-inp2-wrap').style.display='flex';
+    btn.onclick = async () => {
+      const pin=$('pin-inp').value.trim(), pin2=$('pin-inp2').value.trim();
+      if (pin.length<4){err.textContent='Minimum 4 characters.';return;}
+      if (pin!==pin2){err.textContent='PINs don\'t match.';return;}
+      btn.disabled=true; btn.textContent='Saving…';
+      try {
+        await setDoc(doc(db,'config','pin'),{hash:await sha256(pin)});
+        overlay.style.display='none';
+        await loadFromFirestore();
+      } catch(e){err.textContent='Error: '+e.message;btn.disabled=false;btn.textContent='Set PIN';}
+    };
+  } else {
+    title.textContent='Enter your PIN';
+    sub.textContent='Your research is protected.';
+    btn.textContent='Unlock';
+    document.getElementById('pin-inp2-wrap').style.display='none';
+    btn.onclick = async () => {
+      const pin=$('pin-inp').value.trim();
+      if(!pin) return;
+      btn.disabled=true; btn.textContent='Checking…';
+      try {
+        const snap=await getDoc(doc(db,'config','pin'));
+        if(snap.exists() && snap.data().hash===await sha256(pin)){
+          overlay.style.display='none';
+          await loadFromFirestore();
+        } else {
+          err.textContent='Incorrect PIN.';
+          $('pin-inp').value=''; $('pin-inp').focus();
+          btn.disabled=false; btn.textContent='Unlock';
+        }
+      } catch(e){err.textContent='Error: '+e.message;btn.disabled=false;btn.textContent='Unlock';}
+    };
+  }
+  setTimeout(()=>$('pin-inp').focus(),100);
+  $('pin-inp').onkeydown=e=>{if(e.key==='Enter')btn.click();};
+  $('pin-inp2') && ($('pin-inp2').onkeydown=e=>{if(e.key==='Enter')btn.click();});
+}
+
+function $(id){return document.getElementById(id);}
+</script>
+
+<!-- PIN OVERLAY -->
+<div id="pin-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;align-items:center;justify-content:center;">
+  <div style="background:#1f2937;border:1px solid #374151;border-radius:8px;padding:32px;width:320px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.15em;color:#c8a800;text-transform:uppercase">5-Factor Report</div>
+    <div id="pin-title" style="font-size:18px;font-weight:500;color:#e5e7eb"></div>
+    <div id="pin-sub"   style="font-size:11px;color:#9ca3af;line-height:1.6"></div>
+    <input id="pin-inp" type="password" placeholder="PIN" maxlength="20"
+      style="background:#111827;border:1px solid #374151;border-radius:4px;color:#e5e7eb;font-size:16px;font-family:'IBM Plex Mono',monospace;padding:10px 14px;outline:none;letter-spacing:.2em;text-align:center;width:100%">
+    <div id="pin-inp2-wrap" style="display:none">
+      <input id="pin-inp2" type="password" placeholder="Confirm PIN" maxlength="20"
+        style="background:#111827;border:1px solid #374151;border-radius:4px;color:#e5e7eb;font-size:16px;font-family:'IBM Plex Mono',monospace;padding:10px 14px;outline:none;letter-spacing:.2em;text-align:center;width:100%">
+    </div>
+    <div id="pin-err" style="font-size:10px;color:#f87171;min-height:14px;text-align:center"></div>
+    <button id="pin-btn" style="background:#1a3a6b;color:#fff;border:none;border-radius:4px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;width:100%"></button>
+  </div>
+</div>
+</body>
+</html>
